@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f5fbf">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Art Market Ledger">
+<title>Art Market Ledger</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="storageWarn" class="warnbar" hidden>
+  <b>⚠️ This browser is NOT saving your data.</b>
+  Everything disappears when you close this page. Open the app from a web address instead (see README), or save a backup after every few sales.
+  <button id="warnBackup">Save backup now</button>
+</div>
+
+<header class="topbar">
+  <div class="topbar-main">
+    <h1>Art Market Ledger</h1>
+    <label class="switch">
+      <span class="switch-txt">🧪 Test</span>
+      <input type="checkbox" id="setTest">
+      <span class="switch-ui"></span>
+    </label>
+  </div>
+  <div class="topbar-stats" id="topStats"></div>
+</header>
+
+<div id="testBar" class="testbar" hidden>
+  <span>🧪 Test mode — nothing counts toward sales or stock</span>
+  <span class="testbar-btns">
+    <button id="testWipe">Clear</button>
+    <button id="testOff">Turn off</button>
+  </span>
+</div>
+
+<main id="main">
+
+  <!-- ===================== SELL ===================== -->
+  <section class="view" id="view-sell">
+    <div class="seg" id="curSeg">
+      <button class="seg-btn is-on" data-cur="EUR">💶 Cash €</button>
+      <button class="seg-btn" data-cur="GBP">💳 Card £</button>
+    </div>
+
+    <div id="productSections"></div>
+
+    <details class="card custom-card">
+      <summary>✏️ Custom amount (other / untracked)</summary>
+      <div class="field-col">
+        <input id="customName" type="text" placeholder="Item name (e.g. commission)">
+        <input id="customPrice" type="number" inputmode="decimal" step="0.5" placeholder="Amount in the selected currency">
+        <button class="btn btn-sub" id="customAdd">Add to cart</button>
+      </div>
+    </details>
+  </section>
+
+  <!-- ===================== STOCK ===================== -->
+  <section class="view" id="view-stock" hidden>
+    <div class="card" id="stockSummary"></div>
+    <div id="stockList"></div>
+    <div class="card">
+      <p class="hint">This screen is read-only. To change a number, go to <b>Settings → Products · Stock</b>.</p>
+      <button class="btn btn-sub" id="restockAll">Reset all stock to starting quantity</button>
+    </div>
+  </section>
+
+  <!-- ===================== LEDGER ===================== -->
+  <section class="view" id="view-ledger" hidden>
+    <div class="card">
+      <label for="ledgerDate">Date</label>
+      <select id="ledgerDate"></select>
+      <div id="ledgerSummary"></div>
+    </div>
+
+    <div class="card">
+      <h2>Settlement by category</h2>
+      <div id="ledgerByCat"></div>
+      <p class="hint">Use this table when splitting takings per maker.</p>
+    </div>
+
+    <div class="card">
+      <h2>Sales by product</h2>
+      <div id="ledgerByProduct"></div>
+    </div>
+
+    <div class="card">
+      <h2>Transactions</h2>
+      <ul class="hist" id="histList"></ul>
+      <button class="btn btn-warn" id="clearDate">🗑 Delete all records for this date (restores stock)</button>
+    </div>
+
+    <div class="card" id="testCard" hidden>
+      <h2>🧪 Test records</h2>
+      <p class="hint">Practice entries. They never touch sales, stock or reports.</p>
+      <ul class="hist" id="testList"></ul>
+      <button class="btn btn-warn" id="testWipe2">Delete all test records</button>
+    </div>
+
+    <div class="card">
+      <h2>Export</h2>
+      <p class="hint">Everything below follows the <b>date</b> selected above.</p>
+
+      <h3>PDF report — one per currency</h3>
+      <div class="btn-row">
+        <button class="btn btn-cash" id="pdfEur">💶 EUR (€) PDF</button>
+        <button class="btn btn-card" id="pdfGbp">💳 GBP (£) PDF</button>
+      </div>
+      <p class="hint">When the print sheet opens, choose <b>Save as PDF</b>. (iPhone: Share → Save to Files)</p>
+
+      <h3>CSV for Excel</h3>
+      <div class="btn-row">
+        <button class="btn btn-sub" id="csvEur">💶 EUR</button>
+        <button class="btn btn-sub" id="csvGbp">💳 GBP</button>
+        <button class="btn btn-sub" id="csvAll">All</button>
+      </div>
+      <p class="hint">Opens directly in Excel / Google Sheets (one row = one product).</p>
+
+      <h3>Backup</h3>
+      <div class="btn-row">
+        <button class="btn btn-sub" id="expJson">JSON backup (all data)</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== SETTINGS ===================== -->
+  <section class="view" id="view-settings" hidden>
+    <div class="card">
+      <h2>Postcard price (bundle)</h2>
+      <div class="grid2">
+        <div><label for="pcUnitEur">1 for €</label><input id="pcUnitEur" type="number" inputmode="decimal" step="0.5"></div>
+        <div><label for="pcPairEur">2 for €</label><input id="pcPairEur" type="number" inputmode="decimal" step="0.5"></div>
+        <div><label for="pcUnitGbp">1 for £</label><input id="pcUnitGbp" type="number" inputmode="decimal" step="0.5"></div>
+        <div><label for="pcPairGbp">2 for £</label><input id="pcPairGbp" type="number" inputmode="decimal" step="0.5"></div>
+      </div>
+      <p class="hint">Mixing designs is fine — any 2 postcards count as a bundle. 3 = bundle + 1, 4 = two bundles, automatically.</p>
+    </div>
+
+    <div class="card">
+      <h2>Products · Stock</h2>
+      <div id="setProducts"></div>
+      <button class="btn btn-sub" id="addProduct">+ Add product</button>
+    </div>
+
+    <div class="card">
+      <h2>Data</h2>
+      <div class="btn-row">
+        <button class="btn btn-sub" id="expJson2">JSON backup</button>
+        <button class="btn btn-sub" id="impJson">Restore JSON</button>
+      </div>
+      <button class="btn btn-warn" id="cleanAll" style="margin-top:10px">🧹 Delete all sales + reset stock</button>
+      <div class="btn-row">
+        <button class="btn btn-warn" id="resetDay">Delete today only</button>
+        <button class="btn btn-warn" id="resetAll">Factory reset</button>
+      </div>
+      <p class="hint">“Delete all sales” clears records but keeps your products, prices and categories. “Factory reset” puts products and prices back to the original list too. Both need <b>two taps</b>.</p>
+      <input type="file" id="fileInput" accept="application/json,.json" hidden>
+    </div>
+  </section>
+
+</main>
+
+<!-- ===================== CART ===================== -->
+<div class="cart" id="cart" hidden>
+  <div class="cart-grab" id="cartGrab">
+    <div class="cart-grabber"><i></i></div>
+    <div class="cart-handle">
+      <span><b id="cartQty">0</b> in cart</span>
+      <span class="cart-handle-right"><b id="cartTotalMini">€0.00</b></span>
+    </div>
+  </div>
+  <div class="cart-body" id="cartBody">
+    <ul class="cart-lines" id="cartLines"></ul>
+    <div class="cart-sum" id="cartSum"></div>
+    <div class="pay" id="payBox">
+      <label for="received">Cash received (€)</label>
+      <input id="received" type="number" inputmode="decimal" step="0.5" placeholder="Leave empty = exact amount">
+      <div class="quick" id="quickCash"></div>
+      <div class="change-row"><span>Change to give</span><b id="changeOut">€0.00</b></div>
+    </div>
+    <div class="cart-actions">
+      <button class="btn btn-ghost" id="cartClear">Clear</button>
+      <button class="btn btn-primary" id="cartRecord">✅ Record</button>
+    </div>
+  </div>
+</div>
+
+<nav class="tabbar">
+  <button class="tab is-on" data-go="sell"><i>🧾</i>Sell</button>
+  <button class="tab" data-go="stock"><i>📦</i>Stock</button>
+  <button class="tab" data-go="ledger"><i>📊</i>Ledger</button>
+  <button class="tab" data-go="settings"><i>⚙️</i>Settings</button>
+</nav>
+
+<div class="toast" id="toast" hidden></div>
+<div id="reportSheet" class="report" aria-hidden="true"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
