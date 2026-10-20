@@ -30,17 +30,6 @@ ul{list-style:none;margin:0;padding:0}
 b,strong{font-weight:800}
 
 /* ---------- 상단바 ---------- */
-.warnbar{
-  background:#fdecea;color:#8d2317;font-size:.78rem;line-height:1.4;
-  padding:10px 14px;border-bottom:2px solid #e0a89f;
-}
-.warnbar[hidden]{display:none}
-.warnbar b{display:block;font-size:.86rem;margin-bottom:2px}
-.warnbar button{
-  margin-top:7px;border:0;background:var(--warn);color:#fff;
-  border-radius:8px;padding:8px 12px;font-size:.78rem;font-weight:800;
-  cursor:pointer;font-family:inherit;
-}
 .topbar{
   position:sticky;top:0;z-index:40;
   background:var(--primary);color:#fff;
@@ -396,3 +385,5 @@ body.testing .sum-row.total b{color:#c9761a}
 
 .topbar-stats{cursor:pointer}
 .topbar-stats .stat:first-child span{opacity:.9}
+
+.sold-today b{color:#374151;font-weight:800}

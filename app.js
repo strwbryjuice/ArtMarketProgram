@@ -87,16 +87,11 @@ function defaultState() {
 }
 
 /* ---------------- 저장소 ---------------- */
-let storageOk = true;
-function probeStorage() {                      // 진짜로 저장이 되는지 한 번 써보고 확인
-  try { localStorage.setItem('__probe', '1'); localStorage.removeItem('__probe'); return true; }
-  catch (e) { return false; }
-}
 function load() {
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) return migrate(JSON.parse(raw));
-  } catch (e) { storageOk = false; }
+  } catch (e) {}
   return defaultState();
 }
 function migrate(s) {
@@ -209,9 +204,7 @@ function migrate(s) {
   return s;
 }
 function save() {
-  try { localStorage.setItem(KEY, JSON.stringify(state)); storageOk = true; }
-  catch (e) { storageOk = false; }
-  $('#storageWarn').hidden = storageOk;
+  try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
 }
 
 let state = load();
@@ -635,14 +628,17 @@ function renderStock() {
   const outList = tracked.filter(p => p.stock <= 0);
   const lowList = tracked.filter(p => p.stock > 0 && p.stock <= 3);
   const soldToday = state.products.reduce((a, p) => a + soldQty(today, p.id), 0);
+  const soldTotal = state.products.reduce((a, p) => a + soldQty('ALL', p.id), 0);
+  const days = dayCount();
 
   $('#stockSummary').innerHTML = `
     <h2>Stock overview</h2>
     <div class="tiles">
       <div class="tile"><span>Total left</span><b>${totalLeft}</b></div>
-      <div class="tile"><span>Sold today</span><b>${soldToday}</b></div>
+      <div class="tile strong"><span>Total sold${days > 1 ? ` (${days} days)` : ''}</span><b>${soldTotal}</b></div>
+      <div class="tile"><span>Today sold</span><b>${soldToday}</b></div>
       <div class="tile"><span>Sold out</span><b>${outList.length}</b></div>
-      <div class="tile"><span>3 or fewer</span><b>${lowList.length}</b></div>
+      <div class="tile wide"><span>3 or fewer left</span><b>${lowList.length}</b></div>
     </div>
     ${outList.length ? `<p class="hint">Sold out: ${outList.map(p => esc(p.name)).join(', ')}</p>` : ''}
     ${lowList.length ? `<p class="hint">Running low: ${lowList.map(p => esc(p.name) + ' (' + p.stock + ')').join(', ')}</p>` : ''}`;
@@ -653,7 +649,8 @@ function renderStock() {
     if (!items.length) continue;
     const left = items.reduce((a, p) => a + (p.stock || 0), 0);
     const sold = items.reduce((a, p) => a + soldQty(today, p.id), 0);
-    html += `<h3 data-cat="${c.id}">${esc(c.name)} · ${left} left <span class="muted">(${sold} sold today)</span></h3>`;
+    const soldAll = items.reduce((a, p) => a + soldQty('ALL', p.id), 0);
+    html += `<h3 data-cat="${c.id}">${esc(c.name)} · ${left} left <span class="muted">(sold ${sold} today / ${soldAll} total)</span></h3>`;
     html += items.map(p => stockRow(p, today)).join('');
   }
   $('#stockList').innerHTML = html;
@@ -661,6 +658,7 @@ function renderStock() {
 
 function stockRow(p, today) {
   const sold = soldQty(today, p.id);
+  const soldAll = soldQty('ALL', p.id);
   const base = p.baseStock || p.stock || 0;
   const left = p.stock;
   const pct = (left != null && base > 0) ? Math.max(0, Math.min(100, Math.round(left / base * 100))) : 0;
@@ -671,7 +669,7 @@ function stockRow(p, today) {
       <span class="stock-left">${left == null ? '<small>not tracked</small>' : `${left}<small> / ${base}</small>`}</span>
     </div>
     ${left == null ? '' : `<div class="stock-bar"><i class="${barCls}" style="width:${pct}%"></i></div>`}
-    <div class="stock-foot"><span class="sold-today">${sold} sold today</span></div>
+    <div class="stock-foot"><span class="sold-today">sold <b>${sold}</b> today · <b>${soldAll}</b> total</span></div>
   </div>`;
 }
 
@@ -1161,9 +1159,6 @@ $('#ledgerDate').addEventListener('change', e => { ledgerDate = e.target.value; 
 window.addEventListener('resize', () => { if (!$('#cart').hidden) renderCart(); });
 
 /* ---------------- 시작 ---------------- */
-storageOk = storageOk && probeStorage();
-$('#storageWarn').hidden = storageOk;
-$('#warnBackup').addEventListener('click', backup);
 renderTestBar();
 go('sell');
 renderTop();

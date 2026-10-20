@@ -54,7 +54,7 @@ artmarket-program00/
 CSS·JS가 안에 다 들어 있어서 파일 하나로 동작합니다.
 
 > ⚠️ **주의:** 아이폰 사파리는 파일로 직접 연 페이지(`file://`)의 저장 기능을 막는 경우가 있습니다.
-> 앱 위에 **노란 경고줄**이 뜨면 기록이 저장되지 않는 상태이니, 아래 방법 B로 바꾸세요. 안드로이드 크롬은 대체로 잘 됩니다.
+> 앱을 닫았다 열었을 때 기록이 사라져 있다면 저장되지 않는 상태이니, 아래 방법 B로 바꾸세요. 안드로이드 크롬은 대체로 잘 됩니다.
 
 ### 방법 B — 주소로 열기 (현장 추천, 그래도 백엔드 아님)
 1. [app.netlify.com/drop](https://app.netlify.com/drop) 에 `artmarket-standalone.html`을 드래그 (가입 없이 10초, 무료)
@@ -94,7 +94,8 @@ cd ~/Documents/artmarket-program/artmarket-program00 && python3 -m http.server 8
 
 ### 📦 Stock (재고)
 - **보기 전용 화면입니다** (실수로 숫자가 바뀌지 않게)
-- 남은 수량 / 처음 수량, 막대 그래프, 오늘 몇 개 팔렸는지
+- 남은 수량 / 처음 수량, 막대 그래프
+- **Total sold** = 3일 누적 판매, **Today sold** = 그날 판매 (상품 한 줄 한 줄에도 `sold N today · M total`로 같이 표시)
 - 3개 이하는 주황, 품절은 빨강
 - 숫자를 고치려면 **Settings → Products · Stock**에서
 - 맨 아래 **Reset all stock to starting quantity** = 다음 마켓 준비용 (두 번 탭)
