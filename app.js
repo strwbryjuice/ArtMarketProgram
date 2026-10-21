@@ -33,7 +33,7 @@ function defaultState() {
     categories: [
       { id: 'postcard', name: 'Postcards', unitName: 'pc',
         unit: { EUR: toC(3), GBP: toC(2.5) },
-        bundles: [{ qty: 2, EUR: toC(5), GBP: toC(4) }] },
+        bundles: [{ qty: 6, EUR: toC(15), GBP: toC(14), force: true }] },
       { id: 'joint',   name: 'Collab' },
       { id: 'nayeon',  name: 'Nayeon' },
       { id: 'jh',      name: 'JH' },
@@ -46,7 +46,7 @@ function defaultState() {
       pc('crape',     'postcard crape'),
       pc('horse',     'postcard horse'),
       pc('dog',       'postcard dog'),
-      pc('scren',     'postcard the scren'),
+      pc('scren',     'postcard the screen'),
       pc('staircase', 'postcard staircase'),
 
       /* 공동 제작 */
@@ -80,7 +80,7 @@ function defaultState() {
       /* 지인 제작 */
       it('p-hazel',      '📖 Hazel zine',      'friends', 5, 4, 5),
       it('p-lowercase',  '📖 Lowercase',       'friends', 20, 19, 7),
-      it('p-hanbook',    'Han book',           'friends', 20, 19, 3)
+      it('p-hanbook',    'Han book',           'friends', 10, 9, 5)
     ],
     sales: []
   };
@@ -201,6 +201,54 @@ function migrate(s) {
     if (p && p.stock == null) { p.stock = 1; p.baseStock = 1; }
     s.fixV9 = true;
   }
+
+  // 한 번만 적용: Han book €15 / £14, 총 5권 (이미 팔린 수량은 그대로 빼줌)
+  if (!s.fixV10) {
+    const p = s.products.find(x => x.id === 'p-hanbook');
+    if (p) {
+      const sold = (p.baseStock != null && p.stock != null) ? Math.max(0, p.baseStock - p.stock) : 0;
+      p.price = { EUR: toC(15), GBP: toC(14) };
+      p.baseStock = 5;
+      p.stock = Math.max(0, 5 - sold);
+    }
+    s.fixV10 = true;
+  }
+
+  // 한 번만 적용: 엽서 6장 세트 €14 / £13
+  if (!s.fixV11) {
+    const c = s.categories.find(x => x.id === 'postcard');
+    if (c && c.bundles && !c.bundles.some(b => b.qty === 6)) c.bundles.push({ qty: 6, EUR: toC(14), GBP: toC(13) });
+    s.fixV11 = true;
+  }
+
+  // 한 번만 적용: 오타 수정 'the scren' → 'the screen' (지난 판매 기록의 이름까지)
+  if (!s.fixV12) {
+    const p = s.products.find(x => x.id === 'pc-scren');
+    if (p && p.name === 'postcard the scren') p.name = 'postcard the screen';
+    for (const sale of s.sales || []) for (const l of sale.lines || [])
+      if (l.productId === 'pc-scren' && l.name === 'postcard the scren') l.name = 'postcard the screen';
+    s.fixV12 = true;
+  }
+
+  // 한 번만 적용: 엽서 6장 세트는 무조건 적용 (£ 6장 = £13, 2장 세트 3개 £12보다 우선)
+  if (!s.fixV13) {
+    const c = s.categories.find(x => x.id === 'postcard');
+    const b = c && c.bundles && c.bundles.find(x => x.qty === 6);
+    if (b) b.force = true;
+    s.fixV13 = true;
+  }
+
+  // 한 번만 적용: 엽서 1장 €3 / £2.5, 6장 €15 / £14 (2장 세트 없앰) · Han book €10 / £9
+  if (!s.fixV14) {
+    const c = s.categories.find(x => x.id === 'postcard');
+    if (c) {
+      c.unit = { EUR: toC(3), GBP: toC(2.5) };
+      c.bundles = [{ qty: 6, EUR: toC(15), GBP: toC(14), force: true }];
+    }
+    const p = s.products.find(x => x.id === 'p-hanbook');
+    if (p) p.price = { EUR: toC(10), GBP: toC(9) };
+    s.fixV14 = true;
+  }
   return s;
 }
 function save() {
@@ -229,18 +277,27 @@ const productsOf = catId => state.products.filter(p => (catOf(p.cat).id) === cat
    가격 계산
    ========================================================= */
 // 수량 qty를 낱개/세트 조합 중 가장 싸게 (3장=세트+낱개, 4장=세트2개 …)
+// force 표시가 있는 세트는 더 싼 조합이 있어도 무조건 먼저 적용 (엽서 6장 = £13)
 function bestPrice(qty, unitC, bundles, cur) {
   if (qty <= 0) return 0;
+  let forcedC = 0;
+  const forced = (bundles || []).filter(b => b.force && Number(b.qty) > 0 && Number.isFinite(b[cur]))
+    .sort((a, b) => b.qty - a.qty);
+  for (const b of forced) {
+    const n = Math.floor(qty / b.qty);
+    forcedC += n * b[cur]; qty -= n * b.qty;
+  }
+  const free = (bundles || []).filter(b => !b.force);
   const dp = new Array(qty + 1).fill(Infinity);
   dp[0] = 0;
   for (let i = 1; i <= qty; i++) {
     dp[i] = dp[i - 1] + unitC;
-    for (const b of (bundles || [])) {
+    for (const b of free) {
       const bq = Number(b.qty) || 0, bp = b[cur];
       if (bq > 0 && bq <= i && Number.isFinite(bp)) dp[i] = Math.min(dp[i], dp[i - bq] + bp);
     }
   }
-  return dp[qty];
+  return forcedC + dp[qty];
 }
 // 세트가를 각 디자인에 수량 비율로 나눠 담기 (합계가 정확히 일치하도록 보정)
 function allocate(totalC, weights) {
@@ -312,7 +369,8 @@ function addToCart(productId) {
   if (!p) return;
   const line = cart.find(c => c.productId === productId);
   const have = line ? line.qty : 0;
-  if (p.stock != null && have >= p.stock) { toast(`Only ${p.stock} left of ${p.name}`); return; }
+  const left = stockLeft(p);
+  if (left != null && have >= left) { toast(`Only ${left} left of ${p.name}`); return; }
   const wasEmpty = !cart.length;
   if (line) line.qty++;
   else cart.push({ key: uid(), productId, name: p.name, qty: 1 });
@@ -325,7 +383,8 @@ function bumpCart(key, delta) {
   if (!line) return;
   if (delta > 0 && line.productId) {
     const p = prod(line.productId);
-    if (p && p.stock != null && line.qty >= p.stock) { toast(`Only ${p.stock} left of ${p.name}`); return; }
+    const left = p && stockLeft(p);
+    if (left != null && line.qty >= left) { toast(`Only ${left} left of ${p.name}`); return; }
   }
   line.qty += delta;
   if (line.qty <= 0) cart = cart.filter(c => c.key !== key);
@@ -451,10 +510,17 @@ function dayCount() {
   return new Set(state.sales.filter(s => !s.test).map(s => s.date)).size;
 }
 
-function soldQty(date, productId) {
+function soldQty(date, productId) {            // 테스트 모드에서는 테스트 판매만 센다
+  const src = state.settings.testMode
+    ? testSales().filter(s => date === 'ALL' || s.date === date) : salesOf(date);
   let n = 0;
-  for (const s of salesOf(date)) for (const l of s.lines) if (l.productId === productId) n += l.qty;
+  for (const s of src) for (const l of s.lines) if (l.productId === productId) n += l.qty;
   return n;
+}
+// 화면에 보여줄 남은 수량 — 테스트 모드면 진짜 재고에서 테스트 판매분을 뺀 값 (p.stock 자체는 안 바뀜)
+function stockLeft(p) {
+  if (p.stock == null) return null;
+  return state.settings.testMode ? p.stock - soldQty('ALL', p.id) : p.stock;
 }
 // 카테고리(제작자)별 매출
 function byCategory(date) {
@@ -515,7 +581,7 @@ function renderSell() {
     const items = productsOf(c.id);
     if (!items.length) continue;
     const unitName = catUnitName(c);
-    const left = items.reduce((a, p) => a + (p.stock || 0), 0);
+    const left = items.reduce((a, p) => a + (stockLeft(p) || 0), 0);
     let head = `<h2>${esc(c.name)}`;
     if (isBundleCat(c)) {
       const bundleTxt = (c.bundles || []).map(b => `${b.qty} for ${fmt(b[cur], cur)}`).join(' · ');
@@ -526,20 +592,21 @@ function renderSell() {
     head += `</h2>`;
     html += `<div class="card" data-cat="${c.id}">${head}
       <div class="pgrid">${items.map(p => pcardHtml(p, cur, inCart[p.id])).join('')}</div>
-      ${isBundleCat(c) ? `<p class="hint">${left} left in total · mixing designs is fine — any 2 count as a bundle.</p>` : ''}
+      ${isBundleCat(c) ? `<p class="hint">${left} left in total · mixing designs is fine — any 6 count as a bundle.</p>` : ''}
     </div>`;
   }
   $('#productSections').innerHTML = html;
 }
 
 function pcardHtml(p, cur, qtyInCart) {
-  const out = p.stock != null && p.stock <= 0;
+  const left = stockLeft(p);
+  const out = left != null && left <= 0;
   const price = unitOf(p, cur);
   let cls = 'pcard-stock', txt;
-  if (p.stock == null) txt = 'Not tracked';
-  else if (p.stock <= 0) { cls += ' out'; txt = 'Sold out'; }
-  else if (p.stock <= 3) { cls += ' low'; txt = `${p.stock} left`; }
-  else txt = `${p.stock} left`;
+  if (left == null) txt = 'Not tracked';
+  else if (left <= 0) { cls += ' out'; txt = 'Sold out'; }
+  else if (left <= 3) { cls += ' low'; txt = `${left} left`; }
+  else txt = `${left} left`;
   return `<button class="pcard${qtyInCart ? ' in-cart' : ''}" data-cat="${catOf(p.cat).id}" data-add="${p.id}"${out ? ' disabled' : ''}>
     ${qtyInCart ? `<span class="pcard-qty">${qtyInCart}</span>` : ''}
     <span class="pcard-name">${esc(p.name)}</span>
@@ -624,15 +691,17 @@ function snap(d, animate = true) { detent = d; applyT(translateFor(d), animate);
 function renderStock() {
   const today = dayOf();
   const tracked = state.products.filter(p => p.stock != null);
-  const totalLeft = tracked.reduce((a, p) => a + p.stock, 0);
-  const outList = tracked.filter(p => p.stock <= 0);
-  const lowList = tracked.filter(p => p.stock > 0 && p.stock <= 3);
+  const totalLeft = tracked.reduce((a, p) => a + stockLeft(p), 0);
+  const outList = tracked.filter(p => stockLeft(p) <= 0);
+  const lowList = tracked.filter(p => stockLeft(p) > 0 && stockLeft(p) <= 3);
   const soldToday = state.products.reduce((a, p) => a + soldQty(today, p.id), 0);
   const soldTotal = state.products.reduce((a, p) => a + soldQty('ALL', p.id), 0);
   const days = dayCount();
+  const testing = !!state.settings.testMode;
 
   $('#stockSummary').innerHTML = `
-    <h2>Stock overview</h2>
+    <h2>${testing ? '🧪 Stock overview (test)' : 'Stock overview'}</h2>
+    ${testing ? '<p class="hint" style="margin:0 0 10px">Test sales are subtracted here only. Real stock comes back when test mode is off.</p>' : ''}
     <div class="tiles">
       <div class="tile"><span>Total left</span><b>${totalLeft}</b></div>
       <div class="tile strong"><span>Total sold${days > 1 ? ` (${days} days)` : ''}</span><b>${soldTotal}</b></div>
@@ -641,13 +710,13 @@ function renderStock() {
       <div class="tile wide"><span>3 or fewer left</span><b>${lowList.length}</b></div>
     </div>
     ${outList.length ? `<p class="hint">Sold out: ${outList.map(p => esc(p.name)).join(', ')}</p>` : ''}
-    ${lowList.length ? `<p class="hint">Running low: ${lowList.map(p => esc(p.name) + ' (' + p.stock + ')').join(', ')}</p>` : ''}`;
+    ${lowList.length ? `<p class="hint">Running low: ${lowList.map(p => esc(p.name) + ' (' + stockLeft(p) + ')').join(', ')}</p>` : ''}`;
 
   let html = '';
   for (const c of state.categories) {
     const items = productsOf(c.id);
     if (!items.length) continue;
-    const left = items.reduce((a, p) => a + (p.stock || 0), 0);
+    const left = items.reduce((a, p) => a + (stockLeft(p) || 0), 0);
     const sold = items.reduce((a, p) => a + soldQty(today, p.id), 0);
     const soldAll = items.reduce((a, p) => a + soldQty('ALL', p.id), 0);
     html += `<h3 data-cat="${c.id}">${esc(c.name)} · ${left} left <span class="muted">(sold ${sold} today / ${soldAll} total)</span></h3>`;
@@ -660,7 +729,7 @@ function stockRow(p, today) {
   const sold = soldQty(today, p.id);
   const soldAll = soldQty('ALL', p.id);
   const base = p.baseStock || p.stock || 0;
-  const left = p.stock;
+  const left = stockLeft(p);
   const pct = (left != null && base > 0) ? Math.max(0, Math.min(100, Math.round(left / base * 100))) : 0;
   const barCls = left == null ? '' : (left <= 0 ? 'out' : (left <= 3 ? 'low' : ''));
   return `<div class="stock-row" data-cat="${catOf(p.cat).id}" data-sid="${p.id}">
@@ -761,9 +830,9 @@ function renderSettings() {
   const s = state.settings, g = catOf('postcard');
   if (isBundleCat(g)) {
     $('#pcUnitEur').value = num(g.unit.EUR);
-    $('#pcPairEur').value = num(g.bundles[0].EUR);
+    $('#pcSixEur').value = num(pcBundle(6).EUR);
     $('#pcUnitGbp').value = num(g.unit.GBP);
-    $('#pcPairGbp').value = num(g.bundles[0].GBP);
+    $('#pcSixGbp').value = num(pcBundle(6).GBP);
   }
 
   const catOptions = p => state.categories
@@ -1059,10 +1128,16 @@ document.addEventListener('change', e => {
 });
 
 // 설정: 엽서 가격
+function pcBundle(qty) {                       // 엽서 n장 세트 (없으면 만들어 둠)
+  const c = catOf('postcard');
+  let b = c.bundles.find(x => x.qty === qty);
+  if (!b) { b = { qty, EUR: 0, GBP: 0, force: qty === 6 }; c.bundles.push(b); }
+  return b;
+}
 [['#pcUnitEur', v => catOf('postcard').unit.EUR = toC(v)],
  ['#pcUnitGbp', v => catOf('postcard').unit.GBP = toC(v)],
- ['#pcPairEur', v => catOf('postcard').bundles[0].EUR = toC(v)],
- ['#pcPairGbp', v => catOf('postcard').bundles[0].GBP = toC(v)]
+ ['#pcSixEur',  v => pcBundle(6).EUR = toC(v)],
+ ['#pcSixGbp',  v => pcBundle(6).GBP = toC(v)]
 ].forEach(([sel, fn]) => {
   $(sel).addEventListener('change', e => { fn(e.target.value); save(); renderSell(); renderCart(); renderTop(); toast('Saved'); });
 });

@@ -69,8 +69,7 @@ input:focus,select:focus{outline:none;border-color:var(--primary);background:#ff
 label.check{display:flex;align-items:center;gap:8px;font-size:.82rem;margin:12px 0 0}
 label.check input{width:20px;height:20px;margin:0}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.grid2 label{margin-top:0}
-.field-col{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.grid2 label{margin-top:0}.field-col{display:flex;flex-direction:column;gap:8px;margin-top:10px}
 
 /* ---------- 버튼 ---------- */
 .btn{
@@ -334,6 +333,8 @@ h3[data-cat]{
 }
 .stock-row[data-cat]{border-left:4px solid var(--cat)}
 .stock-row[data-cat] .stock-left{color:var(--cat)}
+.stock-row[data-cat] .stock-bar{background:var(--catBg)}
+.stock-row[data-cat] .stock-bar i{background:var(--cat)}
 
 .stock-foot{display:flex;justify-content:flex-end;margin-top:2px}
 
