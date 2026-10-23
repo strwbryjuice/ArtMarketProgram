@@ -667,7 +667,7 @@ function defaultState() {
 
       /* 지인 제작 */
       it('p-hazel',      '📖 Hazel zine',      'friends', 5, 4, 5),
-      it('p-lowercase',  '📖 Lowercase',       'friends', 20, 19, 7),
+      it('p-lowercase',  '📖 Lowercase',       'friends', 15, 15, 7),
       it('p-hanbook',    'Han book',           'friends', 10, 9, 5)
     ],
     sales: []
@@ -836,6 +836,13 @@ function migrate(s) {
     const p = s.products.find(x => x.id === 'p-hanbook');
     if (p) p.price = { EUR: toC(10), GBP: toC(9) };
     s.fixV14 = true;
+  }
+
+  // 한 번만 적용: Lowercase €15 / £15
+  if (!s.fixV15) {
+    const p = s.products.find(x => x.id === 'p-lowercase');
+    if (p) p.price = { EUR: toC(15), GBP: toC(15) };
+    s.fixV15 = true;
   }
   return s;
 }

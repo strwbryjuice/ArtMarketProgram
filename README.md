@@ -171,7 +171,7 @@ PDF 저장법: 버튼 → 인쇄 화면 → **Save as PDF** (아이폰: 공유 �
 | | Valentine card (1개 3€·2개 5€ / £2.5·£4) | 16 | 3 | 2.5 |
 | | Year of snake | 1 | 5 | 4 |
 | 🩷 **Friends** | 📖 Hazel zine | 5 | 5 | 4 |
-| | 📖 Lowercase | 7 | 20 | 19 |
+| | 📖 Lowercase | 7 | 15 | 15 |
 | | Han book | 5 | 10 | 9 |
 
 합계 **28종 / 428개**. 가격·재고가 모두 채워져 있습니다.
